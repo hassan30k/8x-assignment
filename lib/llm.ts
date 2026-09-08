@@ -13,7 +13,7 @@ export function findLLM(): LLMConfig | null {
     return {
       baseUrl: process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1",
       apiKey: process.env.OPENROUTER_API_KEY,
-      model: process.env.LLM_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
+      model: process.env.LLM_MODEL || "inclusionai/ling-3.0-flash-sante:free",
     };
   }
   if (process.env.GROQ_API_KEY) {
