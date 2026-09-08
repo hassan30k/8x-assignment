@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: ugc-factory
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production

@@ -136,7 +136,7 @@ export async function classify(input: string): Promise<ClassifyResult> {
       tagline = meta.description;
     }
     const productName = title && title.length < 40 ? titleCase(title.replace(/^(the|a)\s+/i, "")) : nameFromDomain;
-    const keywords = tokenize(`${humanize(domain)} ${title} ${tagline}`);
+    const keywords = tokenize(`${text} ${humanize(domain)} ${title} ${tagline}`);
     const vibe = detectVibe(keywords);
     const hook = pickByHash(hooksFor(vibe, productName), productName.toLowerCase());
 
