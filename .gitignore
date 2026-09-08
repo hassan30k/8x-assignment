@@ -1,0 +1,16 @@
+# dependencies / build output
+/node_modules
+/.next
+/out
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# logs & tooling
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# local capture state lives outside the repo (see CAPTURE-TEST.md)
