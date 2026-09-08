@@ -33,33 +33,46 @@ export function findLLM(): LLMConfig | null {
   return null;
 }
 
-export async function chatRaw(cfg: LLMConfig, messages: { role: string; content: string }[], maxTokens = 700): Promise<string | null> {
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20_000);
-    const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      signal: ctrl.signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.apiKey}`,
-        ...(cfg.baseUrl.includes("openrouter") ? { "HTTP-Referer": "https://github.com/hassan30k/8x-assignment", "X-Title": "UGC Factory" } : {}),
-      },
-      body: JSON.stringify({
-        model: cfg.model,
-        messages,
-        temperature: 0.4,
-        max_tokens: maxTokens,
-      }),
-    });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content;
-    return typeof text === "string" && text.trim().length ? text.trim() : null;
-  } catch {
-    return null;
+export async function chatRaw(cfg: LLMConfig, messages: { role: string; content: string }[], maxTokens = 800): Promise<string | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 45_000);
+      const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${cfg.apiKey}`,
+          ...(cfg.baseUrl.includes("openrouter") ? { "HTTP-Referer": "https://github.com/hassan30k/8x-assignment", "X-Title": "UGC Factory" } : {}),
+        },
+        body: JSON.stringify({
+          model: cfg.model,
+          messages,
+          temperature: 0.4,
+          max_tokens: maxTokens,
+        }),
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        if (res.status === 429 && attempt === 0) {
+          await new Promise((r) => setTimeout(r, 1000));
+          continue;
+        }
+        return null;
+      }
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content;
+      return typeof text === "string" && text.trim().length ? text.trim() : null;
+    } catch {
+      if (attempt === 0) {
+        await new Promise((r) => setTimeout(r, 600));
+        continue;
+      }
+      return null;
+    }
   }
+  return null;
 }
 
 function extractJson(text: string): unknown {
@@ -118,6 +131,7 @@ export interface LLMResult {
   kind: "chat" | "video";
   reply: string;
   product: LLMVideoProduct | null;
+  proseFallback?: boolean;
 }
 
 export async function classifyWithLLM(messages: { role: string; content: string }[]): Promise<LLMResult | null> {
@@ -131,7 +145,15 @@ export async function classifyWithLLM(messages: { role: string; content: string 
   const raw = await chatRaw(cfg, [{ role: "system", content: SYSTEM }, ...history]);
   if (!raw) return null;
   const obj = extractJson(raw);
-  if (!obj || typeof obj !== "object") return null;
+  if (!obj || typeof obj !== "object") {
+    // The free reasoning model sometimes answers as plain prose instead of our
+    // JSON contract. Use the prose directly as the chat reply rather than
+    // falling back to canned text — and flag it so callers can still trigger
+    // the video workflow when the message clearly pitches a product.
+    const prose = raw.trim().slice(0, 400);
+    if (prose) return { kind: "chat", reply: prose, product: null, proseFallback: true };
+    return null;
+  }
   const kind = (obj as any).kind;
   if (kind !== "chat" && kind !== "video") return null;
   const reply = typeof (obj as any).reply === "string" ? (obj as any).reply.slice(0, 400) : "";

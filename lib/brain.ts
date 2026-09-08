@@ -134,7 +134,11 @@ export async function classify(messages: { role: string; content: string }[]): P
   // Canned intents are NOT used here: the LLM can decide greetings/help/etc. itself.
   const llm = await classifyWithLLM(messages);
   if (llm) {
-    if (llm.kind === "chat") {
+    // proseFallback means the free model answered as natural prose instead of
+    // our JSON contract — fine for chat, but if a product URL is present fall
+    // through to the offline rule engine so the video workflow still fires.
+    const proseWithUrl = llm.proseFallback && !!extractDomain(text);
+    if (llm.kind === "chat" && !proseWithUrl) {
       return { intent: "chat", reply: llm.reply, vibe: null };
     }
 
