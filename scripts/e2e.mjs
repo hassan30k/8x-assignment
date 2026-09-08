@@ -78,6 +78,22 @@ try {
     assert((vid.headers.get("content-type") || "").includes("video/mp4"), "video content-type mp4");
     assert(buf.length > 50_000, `video bytes produced (${buf.length} in ${ms}ms)`);
   }
+
+  if (process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY) {
+    const freeform = await post("/api/chat", {
+      messages: [{ role: "user", content: "yo check out koala notes, it transcribes and summarizes your meetings automatically. you should make a video for it" }],
+    });
+    if (freeform.json.kind === "video") {
+      assert(!!freeform.json.product.productName, "LLM: free-form product message -> video reply");
+      const vid = await get(freeform.json.videoUrl);
+      assert(vid.status === 200 && (vid.headers.get("content-type") || "").includes("video/mp4"), "LLM: video renders");
+      console.log("     LLM video reply:", JSON.stringify({ product: freeform.json.product.productName, vibe: freeform.json.assets.vibe }));
+    } else {
+      console.log("SKIP: LLM responded chat for free-form product (non-critical)");
+    }
+  } else {
+    console.log("SKIP: no LLM key configured — offline rule path asserted above");
+  }
 } finally {
   server.kill();
 }

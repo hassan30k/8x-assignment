@@ -9,6 +9,11 @@ tsconfig.tsbuildinfo
 *.log
 npm-debug.log*
 
+# local secrets — never committed (see .env.example for the shape)
+.env
+.env.*
+!.env.example
+
 # OS / editor
 .DS_Store
 Thumbs.db

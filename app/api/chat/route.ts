@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ kind: "text", text: "Say hi, or send me a product URL and I'll make a video." } satisfies Reply);
   }
 
-  const res = await classify(text);
+  const res = await classify(messages.slice(-16));
 
   if (res.intent !== "product" || !res.product) {
     return NextResponse.json({ kind: "text", text: res.reply } satisfies Reply);
@@ -36,7 +36,9 @@ export async function POST(req: Request) {
 
   const reply: Reply = {
     kind: "video",
-    text: `${res.reply} Here's the UGC video for **${res.product.productName}** 👇`,
+    text: res.reply.startsWith("Got it —")
+      ? `${res.reply} Here's the UGC video for **${res.product.productName}** 👇`
+      : res.reply,
     product: res.product,
     assets: pack,
     videoUrl,
